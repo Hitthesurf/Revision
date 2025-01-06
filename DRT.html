@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digit Recognition Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+        .digit-display {
+            font-size: 2em;
+            margin: 20px 0;
+        }
+        .question {
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Digit Recognition Test</h1>
+    <p>Test your short-term memory by recalling how many of a specific digit appeared.</p>
+
+    <div id="test-container">
+        <button id="start-button">Start Test</button>
+        <div id="digit-display" class="digit-display hidden"></div>
+        <div id="question-section" class="hidden">
+            <p id="question-text" class="question"></p>
+            <div id="options"></div>
+        </div>
+    </div>
+
+    <script>
+        const testContainer = document.getElementById("test-container");
+        const startButton = document.getElementById("start-button");
+        const digitDisplay = document.getElementById("digit-display");
+        const questionSection = document.getElementById("question-section");
+        const questionText = document.getElementById("question-text");
+        const options = document.getElementById("options");
+
+        let currentDigits = "";
+        let digitLength = 5;
+        let correctAnswer = 0;
+
+        startButton.addEventListener("click", startTest);
+
+        function startTest() {
+            startButton.classList.add("hidden");
+            displayDigits();
+        }
+
+        function generateDigits(length) {
+            let digits = "";
+            for (let i = 0; i < length; i++) {
+                digits += Math.floor(Math.random() * 10);
+            }
+            return digits;
+        }
+
+        function displayDigits() {
+            currentDigits = generateDigits(digitLength);
+            digitDisplay.textContent = currentDigits;
+            digitDisplay.classList.remove("hidden");
+
+            setTimeout(() => {
+                digitDisplay.classList.add("hidden");
+                displayQuestion();
+            }, 5000);
+        }
+
+        function displayQuestion() {
+            const randomDigit = Math.floor(Math.random() * 10);
+            const count = countOccurrences(currentDigits, randomDigit);
+            correctAnswer = count;
+
+            questionText.textContent = `How many '${randomDigit}'s were there?`;
+            questionSection.classList.remove("hidden");
+            generateOptions(count);
+        }
+
+        function countOccurrences(string, digit) {
+            return [...string].filter(char => char === digit.toString()).length;
+        }
+
+        function generateOptions(correct) {
+            options.innerHTML = "";
+            const answers = new Set([correct]);
+
+            while (answers.size < 4) {
+                answers.add(Math.floor(Math.random() * 6));
+            }
+
+            Array.from(answers).sort(() => Math.random() - 0.5).forEach(answer => {
+                const button = document.createElement("button");
+                button.textContent = answer;
+                button.addEventListener("click", () => checkAnswer(answer));
+                options.appendChild(button);
+            });
+        }
+
+        function checkAnswer(selected) {
+            if (selected === correctAnswer) {
+                alert("Correct! Moving to the next round.");
+                digitLength++;
+                questionSection.classList.add("hidden");
+                displayDigits();
+            } else {
+                alert(`Wrong! The correct answer was ${correctAnswer}. Test Over.`);
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAF CBAT Vigilance Test Practice</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 40px repeat(9, 40px);
+            grid-gap: 5px;
+            justify-content: center;
+            margin: 20px auto;
+            position: relative;
+        }
+        .cell {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #ddd;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+        }
+        .header {
+            font-weight: bold;
+            text-align: center;
+            background-color: #f4f4f4;
+        }
+        .row-label {
+            font-weight: bold;
+            text-align: center;
+            background-color: #f4f4f4;
+        }
+        .star {
+            color: black;
+        }
+        .priority-star {
+            color: yellow;
+        }
+        .instructions {
+            margin-bottom: 20px;
+        }
+        input {
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Vigilance Test Practice</h1>
+    <div class="instructions">
+        <p>Click "Start" to begin. Eliminate stars by entering their coordinates directly (e.g., "56" for row 5, column 6). Priority stars are yellow and award more points!</p>
+    </div>
+
+    <button onclick="startTest()">Start</button>
+
+    <div id="grid" class="grid"></div>
+
+    <input type="text" id="coordinateInput" placeholder="Enter coordinates" maxlength="2" onkeypress="handleKeyPress(event)">
+
+    <p id="score">Score: 0</p>
+    <p id="message"></p>
+
+    <script>
+        const gridSize = 9;
+        const grid = document.getElementById('grid');
+        const scoreDisplay = document.getElementById('score');
+        const messageDisplay = document.getElementById('message');
+        const input = document.getElementById('coordinateInput');
+        let score = 0;
+        let stars = [];
+        let spawnInterval = 2000; // Starting spawn interval in milliseconds
+        let intervalID;
+
+        function generateRandomStar() {
+            const row = Math.floor(Math.random() * gridSize) + 1;
+            const col = Math.floor(Math.random() * gridSize) + 1;
+            const isPriority = Math.random() > 0.8;
+            return { row, col, isPriority };
+        }
+
+        function populateGrid() {
+            grid.innerHTML = '';
+            const headerRow = document.createElement('div');
+            headerRow.classList.add('row-label');
+            grid.appendChild(headerRow);
+
+            for (let col = 1; col <= gridSize; col++) {
+                const header = document.createElement('div');
+                header.textContent = col;
+                header.classList.add('header');
+                grid.appendChild(header);
+            }
+
+            for (let i = 1; i <= gridSize; i++) {
+                const rowLabel = document.createElement('div');
+                rowLabel.textContent = i;
+                rowLabel.classList.add('row-label');
+                grid.appendChild(rowLabel);
+
+                for (let j = 1; j <= gridSize; j++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    grid.appendChild(cell);
+                }
+            }
+        }
+
+        function placeStar(star) {
+            const cell = document.querySelector(`.cell[data-row='${star.row}'][data-col='${star.col}']`);
+            if (cell && !cell.classList.contains('star')) {
+                cell.innerHTML = '★';
+                cell.classList.add('star');
+                if (star.isPriority) {
+                    cell.classList.add('priority-star');
+                }
+                stars.push(star);
+            }
+        }
+
+        function spawnStars() {
+            const newStar = generateRandomStar();
+            placeStar(newStar);
+            spawnInterval *= 0.98; // Decrease spawn interval over time
+            clearInterval(intervalID);
+            intervalID = setInterval(spawnStars, spawnInterval);
+        }
+
+        function checkCoordinates(inputVal) {
+            const row = parseInt(inputVal[0]);
+            const col = parseInt(inputVal[1]);
+            const cell = document.querySelector(`.cell[data-row='${row}'][data-col='${col}']`);
+
+            if (cell && cell.classList.contains('star')) {
+                if (cell.classList.contains('priority-star')) {
+                    score += 5; // Priority star points
+                } else {
+                    score += 1; // Routine star points
+                }
+                cell.classList.remove('star', 'priority-star');
+                cell.innerHTML = '';
+                stars = stars.filter(star => !(star.row === row && star.col === col));
+                messageDisplay.textContent = `Successfully eliminated star at (${row}, ${col})!`;
+            } else {
+                messageDisplay.textContent = `No star found at (${row}, ${col})!`;
+            }
+
+            scoreDisplay.textContent = `Score: ${score}`;
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && input.value.length === 2) {
+                checkCoordinates(input.value);
+                input.value = '';
+            }
+        }
+
+        function startTest() {
+            score = 0;
+            spawnInterval = 2000;
+            scoreDisplay.textContent = `Score: 0`;
+            messageDisplay.textContent = '';
+            populateGrid();
+            stars = [];
+            clearInterval(intervalID);
+            intervalID = setInterval(spawnStars, spawnInterval);
+        }
+
+        // Initial grid setup
+        populateGrid();
+    </script>
+</body>
+</html>

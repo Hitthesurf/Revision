@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ball Movement</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: blue;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #game-area {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ball {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: white;
+            border-radius: 50%;
+            top: calc(50% - 25px);
+            left: calc(50% - 25px);
+        }
+
+        .shape {
+            position: absolute;
+            opacity: 0.7;
+        }
+
+        .circle {
+            border-radius: 50%;
+            border: 5px solid;
+        }
+
+        .square {
+            border: 5px solid;
+        }
+
+        .triangle {
+            width: 0;
+            height: 0;
+            border-left: 25px solid transparent;
+            border-right: 25px solid transparent;
+            position: absolute;
+        }
+
+        .triangle-up {
+            border-bottom: 50px solid;
+            border-left-width: 30px;
+            border-right-width: 30px;
+            border-bottom-width: 60px;
+        }
+
+        .red-x {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 50px;
+            color: red;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game-area">
+        <div id="ball"></div>
+        <div id="red-x" class="red-x">X</div>
+    </div>
+
+    <script>
+        const ball = document.getElementById('ball');
+        const step = 5; // Movement speed
+        const gameArea = document.getElementById('game-area');
+        const redX = document.getElementById('red-x');
+
+        // Get the bounding rectangle of the game area
+        const gameAreaRect = gameArea.getBoundingClientRect();
+
+        // Initialize ball position
+        let x = gameAreaRect.width / 2 - ball.offsetWidth / 2;
+        let y = gameAreaRect.height / 2 - ball.offsetHeight / 2;
+
+        let rememberedNumber = null; // Track the current remembered number
+        let rememberTaskCount = 0; // Track the number of remember tasks
+
+        // Set initial position
+        ball.style.left = `${x}px`;
+        ball.style.top = `${y}px`;
+
+        
+        // Gamepad Code Start
+        function updatePosition() {      
+            requestAnimationFrame(updatePosition);
+
+            const gamepads = navigator.getGamepads();
+            const gamepad = gamepads[1];
+            if (gamepad == null)
+            {
+                console.log("Gamepad null");
+                return;
+            }   
+
+            y += step*gamepad.axes[1];
+            x += step*gamepad.axes[0];
+            y = Math.max(0, Math.min(y, gameAreaRect.height - ball.offsetHeight));
+            x = Math.max(0, Math.min(x, gameAreaRect.width - ball.offsetWidth));
+
+            ball.style.left = `${x}px`;
+            ball.style.top = `${y}px`;
+
+            
+        }
+        // Gamepad Code Stop
+
+        
+        // Arrow key code START
+        // const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+        
+        // function updatePosition() {
+        //     if (keys.ArrowUp && y > 0) y -= step;
+        //     if (keys.ArrowDown && y < gameAreaRect.height - ball.offsetHeight) y += step;
+        //     if (keys.ArrowLeft && x > 0) x -= step;
+        //     if (keys.ArrowRight && x < gameAreaRect.width - ball.offsetWidth) x += step;
+
+        //     ball.style.left = `${x}px`;
+        //     ball.style.top = `${y}px`;
+
+        //     requestAnimationFrame(updatePosition);
+        // }
+
+        // window.addEventListener('keydown', (event) => {
+        //     if (event.key in keys) keys[event.key] = true;
+        // });
+
+        // window.addEventListener('keyup', (event) => {
+        //     if (event.key in keys) keys[event.key] = false;
+        // });
+        // Arrow Key Code END
+
+        updatePosition();
+
+        function spawnShape() {
+            const shape = document.createElement('div');
+            shape.classList.add('shape');
+
+            // Random shape type
+            const shapeTypes = ['circle', 'square', 'triangle-up'];
+            const shapeColors = ['red', 'green', 'yellow'];
+
+            const selectedShape = shapeTypes[Math.floor(Math.random() * shapeTypes.length)];
+            const selectedColor = shapeColors[Math.floor(Math.random() * shapeColors.length)];
+
+            if (selectedShape === 'triangle-up') {
+                shape.classList.add('triangle', selectedShape);
+                shape.style.borderBottomColor = selectedColor;
+                shape.style.borderLeftColor = 'transparent';
+                shape.style.borderRightColor = 'transparent';
+            } else {
+                shape.classList.add(selectedShape);
+                shape.style.borderColor = selectedColor;
+                shape.style.backgroundColor = 'transparent';
+                shape.style.width = '10px';
+                shape.style.height = '10px';
+            }
+
+            // Random position
+            const maxLeft = gameAreaRect.width - 50;
+            const maxTop = gameAreaRect.height - 50;
+            const startLeft = Math.random() * maxLeft;
+            const startTop = Math.random() * maxTop;
+
+            shape.style.left = `${startLeft}px`;
+            shape.style.top = `${startTop}px`;
+
+            gameArea.appendChild(shape);
+
+            let size = 20;
+            const growthRate = 1.5; // Growth rate
+            const maxArea = 300;
+
+            function grow() {
+                size += growthRate;
+                if (selectedShape !== 'triangle-up') {
+                    shape.style.width = `${size}px`;
+                    shape.style.height = `${size}px`;
+                    shape.style.left = `${startLeft - size / 2 + 5}px`;
+                    shape.style.top = `${startTop - size / 2 + 5}px`;
+                } else {
+                    shape.style.transform = `scale(${size / 50})`;
+                    shape.style.left = `${startLeft - size / 2 + 5}px`;
+                    shape.style.top = `${startTop - size / 2 + 5}px`;
+                }
+
+                if (size > maxArea) {
+                    flashAndRemove();
+                } else {
+                    requestAnimationFrame(grow);
+                }
+            }
+
+            function flashAndRemove() {
+                let flashCount = 6;
+                function flash() {
+                    if (flashCount > 0) {
+                        if (selectedShape === 'triangle-up') {
+                            shape.style.borderBottomColor = flashCount % 2 === 0 ? 'black' : selectedColor;
+                            shape.style.borderLeftColor = 'transparent';
+                            shape.style.borderRightColor = 'transparent';
+                        } else {
+                            shape.style.borderColor = flashCount % 2 === 0 ? 'black' : selectedColor;
+                        }
+                        flashCount--;
+                        setTimeout(flash, 300);
+                    } else {
+                        shape.remove();
+                    }
+                }
+                flash();
+            }
+
+            grow();
+        }
+
+        setInterval(spawnShape, 4500); // Spawn a shape every 4.5 seconds
+
+        let audioContext;
+        let whiteNoiseSource;
+        let beepTimeout;
+        let beepAudio;
+        let beepActive = false;
+
+        function initializeAudio() {
+            if (audioContext) return;
+
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const bufferSize = 2 * audioContext.sampleRate;
+            const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+
+            whiteNoiseSource = audioContext.createBufferSource();
+            whiteNoiseSource.buffer = noiseBuffer;
+            whiteNoiseSource.loop = true;
+
+            const whiteNoiseGain = audioContext.createGain();
+            whiteNoiseGain.gain.value = 0.015;
+
+            whiteNoiseSource.connect(whiteNoiseGain).connect(audioContext.destination);
+            whiteNoiseSource.start();
+
+            scheduleBeep();
+            scheduleTask();
+        }
+
+        function playBeep() {
+            beepAudio = new AudioContext();
+            const oscillator = beepAudio.createOscillator();
+            const gainNode = beepAudio.createGain();
+
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(440, beepAudio.currentTime);
+            gainNode.gain.setValueAtTime(0.1, beepAudio.currentTime);
+
+            oscillator.connect(gainNode).connect(beepAudio.destination);
+            oscillator.start();
+
+            beepActive = true;
+
+            setTimeout(() => {
+                oscillator.stop();
+                beepActive = false;
+                beepAudio.close();
+            }, 300);
+        }
+
+        function scheduleBeep() {
+            const delay = Math.random() * (12000 - 3000) + 3000; // Random time between 3-12 seconds
+
+            beepTimeout = setTimeout(() => {
+                playBeep();
+
+                let pressed = false;
+
+                function handleSpacePress(event) {
+                    if (event.code === 'Space' && beepActive) {
+                        pressed = true;
+                        window.removeEventListener('keydown', handleSpacePress);
+                    }
+                }
+
+                
+                window.addEventListener('keydown', handleSpacePress);
+
+                setTimeout(() => {
+                    if (!pressed) {
+                        redX.style.display = 'block';
+                        setTimeout(() => {
+                            redX.style.display = 'none';
+                        }, 1000);
+                    }
+                    scheduleBeep();
+                }, 500); // 0.5 seconds to press space
+
+            }, delay);
+        }
+
+        function scheduleTask() {
+            const delay = Math.random() * (10000 - 5000) + 5000; // Random time between 5-10 seconds
+
+            setTimeout(() => {
+                const taskType = Math.floor(3*Math.random());
+                if (taskType === 0) {
+                    performBallNumberTask();
+                } else if (taskType === 1){
+                    performRememberNumberTask();
+                } else 
+                {
+                   performInstructionTask(); 
+                }
+                scheduleTask();
+            }, delay);
+        }
+
+        function performBallNumberTask() {
+            const number = Math.floor(Math.random() * 10); // Random number between 0-9
+            const utterance = new SpeechSynthesisUtterance(`Select Ball Number ${number}`);
+            utterance.volume = 0.6;
+            speechSynthesis.speak(utterance);
+
+            let pressed = false;
+
+            function handleNumberPress(event) {
+                if (event.key === number.toString()) {
+                    pressed = true;
+                    window.removeEventListener('keydown', handleNumberPress);
+                }
+            }
+
+            window.addEventListener('keydown', handleNumberPress);
+
+            setTimeout(() => {
+                if (!pressed) {
+                    redX.style.display = 'block';
+                    setTimeout(() => {
+                        redX.style.display = 'none';
+                    }, 1000);
+                }
+            }, 2000); // 2 seconds to press the correct number
+        }
+
+        function performRememberNumberTask() {
+            rememberTaskCount++;
+            if ((rememberTaskCount % 2) == 1) {
+                // New number to remember for odd tasks or if no number exists
+                rememberedNumber = Math.floor(100000 + Math.random() * 900000); // 6-digit number
+                const utterance = new SpeechSynthesisUtterance(`Remember Number ${rememberedNumber}`);
+                utterance.volume = 0.6;
+                speechSynthesis.speak(utterance);
+            } else {
+                // Recall task for even tasks
+                const utterance = new SpeechSynthesisUtterance(`Enter Remembered Number`);
+                utterance.volume = 0.6;
+                speechSynthesis.speak(utterance);
+
+                let input = '';
+                let pressed = false;
+                function handleNumberInput(event) {
+                    if (!isNaN(event.key) && input.length < 6) {
+                        input += event.key;
+                    }
+
+                    if (input.length === 6) {
+                        if (input === rememberedNumber.toString()) {
+                            pressed = true;
+                        }
+                        window.removeEventListener('keydown', handleNumberInput);
+                    }
+                }
+
+                window.addEventListener('keydown', handleNumberInput);
+
+                setTimeout(() => {
+                    if (!pressed || input !== rememberedNumber.toString()) {
+                        redX.style.display = 'block';
+                        setTimeout(() => {
+                            redX.style.display = 'none';
+                        }, 1000);
+                    }
+                }, 5000); // 5 seconds to input the number
+            }
+        }
+
+        function performInstructionTask() {
+            // Random shape type
+            const shapeTypes = ['circle', 'square', 'triangle'];
+            const shapeColors = ['red', 'green', 'yellow'];
+            const shapeType = shapeTypes[Math.floor(3*Math.random())];
+            const shapeColor = shapeColors[Math.floor(3*Math.random())];
+
+            instructionToSay = "Do not fly through the next "
+            const optionType = Math.floor(3*Math.random());
+                if (optionType === 0) {
+                    instructionToSay += shapeColor + " " + shapeType;
+                } else if (optionType === 1){
+                    instructionToSay += shapeColor + " shape";
+                } else 
+                {
+                    instructionToSay += shapeType; 
+                }
+            const utterance = new SpeechSynthesisUtterance(instructionToSay);
+            utterance.volume = 0.6;
+            speechSynthesis.speak(utterance);
+        }
+
+        // Generate random chatter using SpeechSynthesis
+        const speechSynthesis = window.speechSynthesis;
+        function generateChatter() {
+            const syllables = ['ba', 'da', 'ka', 'pa', 'ta', 'ra', 'la', 'ma'];
+            const phrase = Array.from({ length: 3 }, () => syllables[Math.floor(Math.random() * syllables.length)]).join(' ');
+            const utterance = new SpeechSynthesisUtterance(phrase);
+            utterance.volume = 0.4; // Set volume to 40%
+            speechSynthesis.speak(utterance);
+        }
+
+        setInterval(() => {
+            generateChatter();
+        }, 3000); // Generate random chatter every 3 seconds
+
+        window.addEventListener('click', initializeAudio);
+        window.addEventListener('keydown', initializeAudio);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Practice</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+        .visible {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Short-Term Memory Practice</h1>
+    <div id="setup">
+        <label for="digitCount">Enter number of digits to display:</label>
+        <input type="number" id="digitCount" min="1" />
+        <button onclick="startGame()">Start</button>
+    </div>
+
+    <div id="display" class="hidden">
+        <p id="digits"></p>
+    </div>
+
+    <div id="inputPhase" class="hidden">
+        <label for="userInput">Enter the digits you remember:</label>
+        <input type="text" id="userInput" />
+        <button onclick="checkAnswer()">Submit</button>
+    </div>
+
+    <div id="result" class="hidden">
+        <p id="resultMessage"></p>
+        <button onclick="nextRound()">Next Round</button>
+    </div>
+
+    <script>
+        let correctDigits = "";
+
+        function startGame() {
+            const digitCount = document.getElementById('digitCount').value;
+            if (digitCount < 1) {
+                alert("Please enter a valid number of digits.");
+                return;
+            }
+
+            correctDigits = generateRandomDigits(digitCount);
+
+            document.getElementById('setup').classList.add('hidden');
+            document.getElementById('display').classList.remove('hidden');
+            document.getElementById('digits').textContent = correctDigits;
+
+            setTimeout(() => {
+                document.getElementById('display').classList.add('hidden');
+                document.getElementById('inputPhase').classList.remove('hidden');
+            }, 5000);
+        }
+
+        function generateRandomDigits(length) {
+            let digits = "";
+            for (let i = 0; i < length; i++) {
+                digits += Math.floor(Math.random() * 10);
+            }
+            return digits;
+        }
+
+        function checkAnswer() {
+            const userInput = document.getElementById('userInput').value;
+            document.getElementById('inputPhase').classList.add('hidden');
+            document.getElementById('result').classList.remove('hidden');
+
+            if (userInput === correctDigits) {
+                document.getElementById('resultMessage').textContent = "Correct! Great job!";
+            } else {
+                document.getElementById('resultMessage').textContent = `Incorrect. Correct: ${correctDigits}, Your answer: ${userInput}`;
+            }
+        }
+
+        function nextRound() {
+            document.getElementById('userInput').value = "";
+            document.getElementById('result').classList.add('hidden');
+            document.getElementById('setup').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

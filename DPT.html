@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynamic Projection Test</title>
+  <style>
+    canvas {
+      border: 1px solid black;
+      display: block;
+      margin: 20px auto;
+      background-color: #5693f5; /* Dark blue background */
+    }
+    .controls {
+      text-align: center;
+      margin: 20px auto;
+    }
+    .controls div {
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="projectionCanvas" width="600" height="400"></canvas>
+
+  <div class="controls">
+    <div>
+      <label><input type="radio" name="dot" value="0" checked> Red A</label>
+      <label><input type="radio" name="dot" value="1"> Yellow 1</label>
+      <label><input type="radio" name="dot" value="2"> Blue</label>
+    </div>
+    <p>Use arrow keys (← or →) followed by a 3-digit bearing (e.g., 045) to adjust the selected dot's direction.</p>
+  </div>
+
+  <script>
+    function getRandomNumber(value) {
+      return Math.floor(Math.random() * (value + 1));
+    }
+
+    const canvas = document.getElementById('projectionCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const speed = 0.2;
+    const colors = ['red', 'yellow', 'blue'];
+    var banditDot = { x: getRandomNumber(canvas.width),
+                      y: getRandomNumber(canvas.height),
+                      angle: getRandomNumber(360),
+                      color: 'black',
+                      callSign: 'bandit'} // CallSign Altitude
+    var dots = [
+      { x: 100, y: 100, angle: 0, color: 'red', callSign: 'CA-A' },
+      { x: 300, y: 200, angle: 90, color: 'yellow', callSign: 'CA-N' },
+      { x: 500, y: 300, angle: 180, color: 'blue', callSign: '030' },
+      banditDot
+    ];
+    const gateWidth = 20;
+    var gatesAlpha = [
+      { x: 50, y: 200, angle: 180, color: 'red', callSign: 'A'},
+      { x: 400, y: 200, angle: 180, color: 'red', callSign: 'B'}
+    ];
+
+    var gatesNumeric = [
+      { x: 200, y: 400, angle: 180, color: 'yellow', callSign: '1'},
+      { x: 200, y: 300, angle: 180, color: 'yellow', callSign: '2'}
+    ];
+
+
+    let inputBuffer = '';
+
+    function drawDot(dot) {
+      ctx.beginPath();
+      ctx.arc(dot.x, dot.y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = dot.color;
+      ctx.fill();
+      ctx.closePath();
+
+      // Draw text callSign next to the dot
+      ctx.font = '12px Arial';
+      ctx.fillStyle = 'black';
+      ctx.fillText(dot.callSign, dot.x + 10, dot.y);
+    }
+
+    function drawLine(x1, y1, x2, y2, color, lineWidth = 1) 
+    {
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lineWidth;
+      ctx.stroke();
+      ctx.closePath();
+    }
+
+    function drawTrail(dot)
+    {
+      const trailLength = 25;
+      const endX = dot.x - trailLength * Math.cos(dot.angle * Math.PI / 180);
+      const endY = dot.y - trailLength * Math.sin(dot.angle * Math.PI / 180);
+      drawLine(dot.x, dot.y, endX, endY, dot.color);
+    }
+
+    function updatePosition(dot) {
+      dot.x += speed * Math.cos(dot.angle * Math.PI / 180);
+      dot.y += speed * Math.sin(dot.angle * Math.PI / 180);
+
+      // Wrap around the canvas edges
+      if (dot.x < 0) dot.x = canvas.width;
+      if (dot.x > canvas.width) dot.x = 0;
+      if (dot.y < 0) dot.y = canvas.height;
+      if (dot.y > canvas.height) dot.y = 0;
+    }
+
+    function updateGates(dotA, gates) {
+      // Get middle of gate
+      const gate = gates[0];
+      const midX = gate.x + gateWidth * Math.sin(gate.angle * Math.PI / 180) / 2;
+      const midY = gate.y + gateWidth * Math.cos(gate.angle * Math.PI / 180) / 2;
+
+      const distanceSquared = (midX - dotA.x)**2 + (midY - dotA.y)**2;
+      if (distanceSquared <= (gateWidth/2)**2)
+      {
+        // Shift second gate to first position
+        gates[0].x = gates[1].x;
+        gates[0].y = gates[1].y;
+        gates[0].angle = gates[1].angle;
+        gates[0].callSign = gates[1].callSign;
+
+        // Generate new gate
+        gates[1].x = getRandomNumber(canvas.width);
+        gates[1].y = getRandomNumber(canvas.height);
+        gates[1].angle = getRandomNumber(360);
+        gates[1].callSign = String.fromCharCode(gates[1].callSign.charCodeAt(0) + 1);
+      }
+    }
+
+
+
+    function drawGates(gates) {
+      gates.forEach(gate => {
+        drawDot(gate);
+        const newX = gate.x + gateWidth * Math.sin(gate.angle * Math.PI / 180);
+        const newY = gate.y + gateWidth * Math.cos(gate.angle * Math.PI / 180);
+        const newColor = gate.color;
+        const newDot = { x: newX, y: newY, angle: 0, color: newColor, callSign: ''};
+        drawDot(newDot);
+      }
+      )
+    }
+
+    function updateCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      dots.forEach(dot => {
+        updatePosition(dot);
+        drawDot(dot);
+        drawTrail(dot);
+      });
+      updateGates(dots[0], gatesAlpha);
+      updateGates(dots[1], gatesNumeric);
+      drawGates(gatesAlpha);
+      drawGates(gatesNumeric);
+      // drawGateB
+    }
+
+    setInterval(updateCanvas, 1000 / 60);
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault(); // Prevent arrow keys from changing radio button selection
+        inputBuffer = event.key === 'ArrowLeft' ? 'L' : 'R';
+      } else if (!isNaN(event.key) && inputBuffer.length > 0 && inputBuffer.length < 4) {
+        inputBuffer += event.key;
+        if (inputBuffer.length === 4) {
+          const direction = inputBuffer[0];
+          const angleInput = parseInt(inputBuffer.slice(1), 10);
+
+          const selectedDotIndex = parseInt(document.querySelector('input[name="dot"]:checked').value);
+          const selectedDot = dots[selectedDotIndex];
+
+          if (direction === 'L') {
+            selectedDot.angle -= angleInput;
+          } else if (direction === 'R') {
+            selectedDot.angle += angleInput;
+          }
+
+          selectedDot.angle %= 360;
+          inputBuffer = ''; // Reset input buffer
+        }
+      }
+    });
+  </script>
+</body>
+</html>

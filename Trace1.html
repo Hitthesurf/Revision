@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trace 1</title>
+  <style>
+    canvas {
+      border: 1px solid black;
+      display: block;
+      margin: 20px auto;
+      background-color: #5693f5; /* Dark blue background */
+    }
+    .controls {
+      text-align: center;
+      margin: 20px auto;
+    }
+    .controls div {
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="projectionCanvas" width="600" height="600"></canvas>
+
+  <div class="controls">
+    <div>
+      <label><input type="radio" name="dot" value="0" checked> Red A</label>
+      <label><input type="radio" name="dot" value="1"> Yellow 1</label>
+      <label><input type="radio" name="dot" value="2"> Blue</label>
+    </div>
+    <p>Use arrow keys (← or →) followed by a 3-digit bearing (e.g., 045) to adjust the selected dot's direction.</p>
+  </div>
+
+  <script>
+    function getRandomNumber(value) {
+      return Math.floor(Math.random() * (value + 1));
+    }
+
+    const canvas = document.getElementById('projectionCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const speed = 0.2;
+    const colors = ['red', 'yellow', 'blue'];
+
+    const planeDots = [
+        // Body
+        { x: 1, y: 0, z: 0},
+        { x: 2, y: 0, z: 0},
+        { x: 2.5, y: 0.5, z: 0},
+        { x: 2, y: 1, z: 0},
+        { x: 1, y: 1, z: 0},
+        { x: 0.5, y: 1.5, z: 0},
+        { x: -0.5, y: 1.5, z: 0},
+        { x: -3.5, y: 1, z: 0},
+        { x: -4, y: 2, z: 0},
+        { x: -4, y: 0.75, z: 0},
+        { x: -3.5, y: 0.5, z: 0},
+        { x: -0.5, y: 0, z: 0},
+
+        // Main Wings
+        { x: -0.5, y: 0.5, z: 3.5},
+        { x: 1, y: 0.5, z: 3.5},
+        { x: -0.5, y: 0.5, z: -3.5},
+        { x: 1, y: 0.5, z: -3.5},
+
+        // Tail Wings
+        { x: -4, y: 0.875, z: 1},
+        { x: -3, y: 0.875, z: 1},
+        { x: -4, y: 0.875, z: -1},
+        { x: -3, y: 0.875, z: -1},
+
+    ]
+
+    const planeLines = [
+        0, 1,
+        1, 2,
+        2, 3,
+        3, 4,
+        4, 5,
+        5, 6,
+        6, 7,
+        7, 8,
+        8, 9,
+        9, 10,
+        10, 11,
+        11, 0,
+
+        11, 12,
+        12, 13,
+        13, 0,
+
+        11, 14,
+        14, 15,
+        15, 0,
+
+        16, 18,
+        18, 19,
+        19, 17,
+        17, 16
+    ]
+
+
+    // Simple Arrow Planes
+    // const planeDots = [
+    //     { x: -0.5, y: 0, z: 0}, // Back
+    //     { x: 0.5, y: 0, z: 0}, // Front
+    //     { x: 0, y: 0, z: 0.75}, // Left wing
+    //     { x: 0, y: 0, z: -0.75}, // Right wing
+    // ]
+
+    // const planeLines = [
+    //     1,0,
+    //     1,2,
+    //     1,3
+    // ]
+
+    // transform basis 
+    // when up rotates around z axis
+    // when left rotate around y/x axis yaw/roll 
+    const scale = 10
+    var planes = [
+        { 
+          pos: {x: 0, y: -100, z: 10},
+          xbasis: {x: scale, y: 0, z: 0},
+          ybasis: {x: 0, y: scale, z: 0},
+          zbasis: {x: 0, y: 0, z: scale},
+        },
+        { 
+          pos: {x: 0, y: 100, z: 10},
+          xbasis: {x: scale, y: 0, z: 0},
+          ybasis: {x: 0, y: scale, z: 0},
+          zbasis: {x: 0, y: 0, z: scale},
+        },
+        { 
+          pos: {x: 0, y: 200, z: 10},
+          xbasis: {x: scale, y: 0, z: 0},
+          ybasis: {x: 0, y: scale, z: 0},
+          zbasis: {x: 0, y: 0, z: scale},
+        }
+    ]
+
+    function getRandomNumber(value) {
+      return Math.floor(Math.random() * (value + 1));
+    }
+
+    function rotateVector(vector, axis, angle) {
+        // Normalize the axis vector
+        const axisLength = Math.sqrt(axis.x ** 2 + axis.y ** 2 + axis.z ** 2);
+        const ux = axis.x / axisLength;
+        const uy = axis.y / axisLength;
+        const uz = axis.z / axisLength;
+
+        // Extract components of the input vector
+        const vx = vector.x;
+        const vy = vector.y;
+        const vz = vector.z;
+
+        // Precompute trigonometric values
+        const cosTheta = Math.cos(angle);
+        const sinTheta = Math.sin(angle);
+        const oneMinusCosTheta = 1 - cosTheta;
+
+        // Compute rotated vector components using the Rodrigues' rotation formula
+        const rotatedX = (
+            (cosTheta + ux * ux * oneMinusCosTheta) * vx +
+            (ux * uy * oneMinusCosTheta - uz * sinTheta) * vy +
+            (ux * uz * oneMinusCosTheta + uy * sinTheta) * vz
+        );
+
+        const rotatedY = (
+            (uy * ux * oneMinusCosTheta + uz * sinTheta) * vx +
+            (cosTheta + uy * uy * oneMinusCosTheta) * vy +
+            (uy * uz * oneMinusCosTheta - ux * sinTheta) * vz
+        );
+
+        const rotatedZ = (
+            (uz * ux * oneMinusCosTheta - uy * sinTheta) * vx +
+            (uz * uy * oneMinusCosTheta + ux * sinTheta) * vy +
+            (cosTheta + uz * uz * oneMinusCosTheta) * vz
+        );
+
+        // Return the rotated vector
+        return { x: rotatedX, y: rotatedY, z: rotatedZ };
+    }
+
+
+    function calculate3DPoisition(LandD, model)
+    {
+        modelPosition = [];
+        model.forEach(dot => {
+            const newDotX = LandD.pos.x + dot.x * LandD.xbasis.x + dot.y * LandD.ybasis.x + dot.z * LandD.zbasis.x;
+            const newDotY = LandD.pos.y + dot.x * LandD.xbasis.y + dot.y * LandD.ybasis.y + dot.z * LandD.zbasis.y;
+            const newDotZ = LandD.pos.z + dot.x * LandD.xbasis.z + dot.y * LandD.ybasis.z + dot.z * LandD.zbasis.z;
+            modelPosition.push({x: newDotX, y: newDotY, z: newDotZ});
+            }
+        )
+        return modelPosition
+    }
+
+    function projectDot3DToDot2D(dot3D)
+    {
+        // At Moment orthographic camera
+        const dotX = dot3D.x + canvas.width/2;
+        const dotY = -dot3D.y + canvas.height/2;
+        return {x: dotX, y: dotY, color: "red"}
+    }
+
+    function drawDot(dot) {
+      const dotRadius = 2; 
+      ctx.beginPath();
+      ctx.arc(dot.x, dot.y, dotRadius, 0, Math.PI * 2);
+      ctx.fillStyle = dot.color;
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function drawLine(x1, y1, x2, y2, color, lineWidth = 1) 
+    {
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lineWidth;
+      ctx.stroke();
+      ctx.closePath();
+    }
+
+    function updatePlaneRoll(plane, angle)
+    {
+        const axisToRotateAround = plane.xbasis;
+        const newYBasis = rotateVector(plane.ybasis, axisToRotateAround, angle);
+        const newZBasis = rotateVector(plane.zbasis, axisToRotateAround, angle);
+        plane.ybasis = newYBasis;
+        plane.zbasis = newZBasis;
+    }
+
+    function updatePlaneYaw(plane, angle)
+    {
+        const axisToRotateAround = plane.ybasis;
+        const newXBasis = rotateVector(plane.xbasis, axisToRotateAround, angle);
+        const newZBasis = rotateVector(plane.zbasis, axisToRotateAround, angle);
+        plane.xbasis = newXBasis;
+        plane.zbasis = newZBasis;
+    }
+
+    function updatePlanePitch(plane, angle)
+    {
+        const axisToRotateAround = plane.zbasis;
+        const newXBasis = rotateVector(plane.xbasis, axisToRotateAround, angle);
+        const newYBasis = rotateVector(plane.ybasis, axisToRotateAround, angle);
+        plane.xbasis = newXBasis;
+        plane.ybasis = newYBasis;
+    }
+
+    function updatePlaneForward(plane, distance)
+    {
+        const axisLength = Math.sqrt(plane.xbasis.x ** 2 + plane.xbasis.y ** 2 + plane.xbasis.z ** 2);
+        plane.pos.x += distance * plane.xbasis.x / axisLength;
+        plane.pos.y += distance * plane.xbasis.y / axisLength;
+        plane.pos.z += distance * plane.xbasis.z / axisLength;
+    }
+
+    function updatePlaneModPosition(plane)
+    {
+        if (plane.pos.x < -canvas.width/2) plane.pos.x = canvas.width/2;
+        else if (plane.pos.x > canvas.width/2) plane.pos.x = -canvas.width/2;
+        if (plane.pos.y < -canvas.height/2) plane.pos.y = canvas.height/2;
+        else if (plane.pos.y > canvas.height/2) plane.pos.y = -canvas.height/2;
+    }
+
+    function updatePlane(plane, input)
+    {
+        // Mod plane
+        updatePlaneModPosition(plane);
+
+        // // Roll
+        // updatePlanePitch(plane, 0.02);
+        // updatePlaneRoll(plane, 0.02);
+        const angle = 0.02;
+        if (input == 'forward');
+        else if (input == 'left') updatePlaneYaw(plane, -angle);
+        else if (input == 'right') updatePlaneYaw(plane, angle);
+        else if (input == 'up') updatePlanePitch(plane, -angle);
+        else if (input == 'down') updatePlanePitch(plane, angle);
+
+        // Move Forward
+        updatePlaneForward(plane, 1);
+    }
+
+    function drawModel(modelPositions, modelLines, modelColor, withDots = false)
+    {
+        modelPositions.forEach(dot3D => {       
+            var dot2D = projectDot3DToDot2D(dot3D);
+            if (withDots) drawDot(dot2D);
+        });
+        for (let i = 0; i < modelLines.length; i += 2)
+        {
+            const dot3DOne = modelPositions[modelLines[i]];
+            const dot3DTwo = modelPositions[modelLines[i+1]];
+            const dot2DOne = projectDot3DToDot2D(dot3DOne);
+            const dot2DTwo = projectDot3DToDot2D(dot3DTwo);
+            drawLine(dot2DOne.x, dot2DOne.y, dot2DTwo.x, dot2DTwo.y, modelColor);
+        }
+    }
+
+    function getRandomDirection()
+    {
+        const options = ['forward', 'left', 'right', 'up', 'down'];
+        return options[getRandomNumber(options.length-1)];
+    }
+
+    function triggerSwitchEvent(chance)
+    {
+        // Chance happens every frame
+        if (getRandomNumber(chance) == 0) return true;
+        return false;
+    }
+
+    function triggerPlaneSwitchEvent(selected)
+    {
+        const chance = 200;
+        if (triggerSwitchEvent(chance))
+        {
+            return getRandomNumber(planes.length - 1);
+        }
+        return selected;
+    }
+
+    function triggerDirectionSwitchEvent(direction)
+    {
+        const chance = 100;
+        if (triggerSwitchEvent(chance))
+        {
+            return getRandomDirection();
+        }
+        return direction;
+    }
+
+    var currentPlaneInput = [];
+    var planeIDToMimic = 0;
+
+    function startCanvas() {
+        currentPlaneInput = [];
+        planes.forEach(plane => {
+            currentPlaneInput.push(getRandomDirection());
+        });
+    }
+
+    function updateCanvas() {
+    //   startTime = new Date().getTime();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      planeIDToMimic = triggerPlaneSwitchEvent(planeIDToMimic);
+      for (let planeID = 0; planeID < planes.length; planeID++)
+      {
+        var plane = planes[planeID];
+        currentPlaneInput[planeID] = triggerDirectionSwitchEvent(currentPlaneInput[planeID]);
+        updatePlane(plane, currentPlaneInput[planeID]);
+        var modelPositions = calculate3DPoisition(plane, planeDots);
+        var planeColor = 'yellow';
+        if (planeID == planeIDToMimic) planeColor = 'red';
+        drawModel(modelPositions, planeLines, planeColor);
+      }
+    //   endTime = new Date().getTime();
+    //   console.log(endTime - startTime);
+    }
+
+    console.log("Start");
+    startCanvas();
+    setInterval(updateCanvas, 1000 / 60);
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault(); // Prevent arrow keys from changing radio button selection
+        inputBuffer = event.key === 'ArrowLeft' ? 'L' : 'R';
+      } else if (!isNaN(event.key) && inputBuffer.length > 0 && inputBuffer.length < 4) {
+        inputBuffer += event.key;
+        if (inputBuffer.length === 4) {
+          const direction = inputBuffer[0];
+          const angleInput = parseInt(inputBuffer.slice(1), 10);
+
+          const selectedDotIndex = parseInt(document.querySelector('input[name="dot"]:checked').value);
+          const selectedDot = dots[selectedDotIndex];
+
+          if (direction === 'L') {
+            selectedDot.angle -= angleInput;
+          } else if (direction === 'R') {
+            selectedDot.angle += angleInput;
+          }
+
+          selectedDot.angle %= 360;
+          inputBuffer = ''; // Reset input buffer
+        }
+      }
+    });
+  </script>
+</body>
+</html>
